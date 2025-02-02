@@ -6,78 +6,111 @@ dotenv.config();
 
 // Api controller function to manage clerk user with database
 
+ // Adjust this import path according to your project structure
+
 export const clerkWebHooks = async (req, res) => {
-    try {
-      const Whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
-  
-      // Verify webhook signature
-      try {
-        await Whook.verify(
-          JSON.stringify(req.body),
-          req.headers["svix-timestamp"],
-          req.headers["svix-signature"],
-          req.headers["svix-id"]
-        );
-        console.log('Webhook verification passed');
-      } catch (err) {
-        console.log('Webhook verification failed:', err);
-        return res.status(400).json({ success: false, message: 'Invalid signature' });
+  try {
+    // Initialize the Webhook class with your Clerk webhook secret
+    const Whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
+
+    // Verify the webhook signature for security
+    await Whook.verify(
+      JSON.stringify(req.body),
+      req.headers['svix-timestamp'],
+      req.headers['svix-signature'],
+      req.headers['svix-id']
+    );
+    console.log('Webhook signature verified successfully.');
+
+    // Extract the relevant data from the webhook payload
+    const { data, type } = req.body;
+
+    // Switch to handle different types of Clerk events
+    switch (type) {
+      case 'user.created': {
+        const userdata = {
+          _id: data.id,  // Use Clerk's user ID as the MongoDB document ID
+          email: data.email_addresses[0]?.email_address,  // Ensure there's an email address
+          name: `${data.first_name} ${data.last_name}`,  // Combine first and last name
+          image: data.image_url,  // Profile image URL from Clerk
+          resume: '',  // You can add a default or empty value for resume
+        };
+
+        // Log the user data to confirm it's correct
+        console.log('User data to be created:', userdata);
+
+        // Check if the email address already exists in the database
+        const existingUser = await User.findOne({ email: userdata.email });
+        if (existingUser) {
+          console.log('User already exists with email:', userdata.email);
+          return res.status(400).json({ success: false, message: 'User already exists' });
+        }
+
+        // Create a new user in the database
+        try {
+          const newUser = await User.create(userdata);
+          console.log('User created successfully:', newUser);
+          res.status(200).json({ success: true, message: 'User created successfully' });
+        } catch (err) {
+          console.error('Error creating user:', err);
+          res.status(500).json({ success: false, message: 'Error creating user', error: err });
+        }
+        break;
       }
-  
-      // Getting data from the request body
-      const { data, type } = req.body;
-  
-      console.log('Received Webhook data:', data);
-  
-      switch (type) {
-        case "user.created":
-          {
-            const userdata = {
-              _id: data.id,
-              email: data.email_addresses[0].email_address,
-              name: data.first_name + " " + data.last_name,
-              image: data.image_url,
-              resume: ''  // Assuming you want to leave this empty for now
-            };
-            
-            try {
-              await User.create(userdata);
-              console.log('User created successfully');
-              res.status(200).json({ success: true, message: "User created successfully" });
-            } catch (err) {
-              console.error('Error creating user:', err);
-              res.status(500).json({ success: false, message: 'Error creating user' });
-            }
+
+      case 'user.updated': {
+        const userdata = {
+          email: data.email_addresses[0]?.email_address,  // Ensure there's an email address
+          name: `${data.first_name} ${data.last_name}`,  // Combine first and last name
+          image: data.image_url,  // Profile image URL
+        };
+
+        // Log the user data to confirm it's correct
+        console.log('User data to be updated:', userdata);
+
+        // Update the existing user in the database
+        try {
+          const updatedUser = await User.findByIdAndUpdate(data.id, userdata, { new: true });
+          if (!updatedUser) {
+            console.log('User not found for update with ID:', data.id);
+            return res.status(404).json({ success: false, message: 'User not found' });
           }
-          break;
-  
-        case "user.updated":
-          {
-            const userdata = {
-              email: data.email_addresses[0].email_address,
-              name: data.first_name + " " + data.last_name,
-              image: data.image_url,
-            };
-  
-            await User.findByIdAndUpdate(data.id, userdata);
-            res.status(200).json({ success: true, message: "User updated successfully" });
-            break;
-          }
-  
-        case "user.deleted":
-          {
-            await User.findOneAndDelete(data.id);
-            res.status(200).json({ success: true, message: "User deleted successfully" });
-            break;
-          }
-  
-        default:
-          res.status(400).json({ success: false, message: "Unknown event type" });
-          break;
+
+          console.log('User updated successfully:', updatedUser);
+          res.status(200).json({ success: true, message: 'User updated successfully' });
+        } catch (err) {
+          console.error('Error updating user:', err);
+          res.status(500).json({ success: false, message: 'Error updating user', error: err });
+        }
+        break;
       }
-    } catch (err) {
-      console.error('Webhook error:', err);
-      res.status(500).json({ success: false, message: "Web hooks error" });
+
+      case 'user.deleted': {
+        try {
+          const deletedUser = await User.findByIdAndDelete(data.id);
+          if (!deletedUser) {
+            console.log('User not found for deletion with ID:', data.id);
+            return res.status(404).json({ success: false, message: 'User not found' });
+          }
+
+          console.log('User deleted successfully:', deletedUser);
+          res.status(200).json({ success: true, message: 'User deleted successfully' });
+        } catch (err) {
+          console.error('Error deleting user:', err);
+          res.status(500).json({ success: false, message: 'Error deleting user', error: err });
+        }
+        break;
+      }
+
+      default:
+        console.log('Unhandled event type:', type);
+        res.status(200).json({ success: true, message: 'Event not handled' });
+        break;
     }
-  };
+  } catch (err) {
+    console.error('Error processing webhook:', err);
+    res.status(500).json({ success: false, message: 'Webhook error', error: err });
+  }
+};
+
   
