@@ -1,5 +1,8 @@
 import { Webhook } from "svix";
 import User from './../models/UserModel.js';
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // Api controller function to manage clerk user with database
 
