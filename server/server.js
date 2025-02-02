@@ -34,7 +34,7 @@ app.get("/", (req, res)=>{
     res.send("Server is running")
 })
 
-app.use("/webhooks",clerkWebHooks)
+app.get("/webhooks",clerkWebHooks)
   
 
 
