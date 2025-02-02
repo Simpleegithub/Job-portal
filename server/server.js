@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import connectDB from './utils/Dbconnection.js';
 import './config/instrument.js';
 import * as Sentry from '@sentry/node'; 
-import {clerkWebHooks} from './controllers/WebhooksController.js';
+import {ClerkWebHooks} from './controllers/WebhooksController.js';
 
 dotenv.config();
 
@@ -34,7 +34,7 @@ app.get("/", (req, res)=>{
     res.send("Server is running")
 })
 
-app.get("/webhooks",clerkWebHooks)
+app.post("/webhooks",ClerkWebHooks);
   
 
 
