@@ -4,12 +4,12 @@ const userSchema = new mongoose.Schema({
 
     _id: {
         type: String,
-        required: true
+        // required: true
     },
 
     name: {
         type: String,
-        required: true,
+        // required: true,
         unique: true
     },
     email: {
@@ -20,12 +20,12 @@ const userSchema = new mongoose.Schema({
 
     resume:{
         type: String,
-        required: true
+        // required: true
     },
 
     image:{
         type: String,
-        required: true
+        // required: true
     },
 
 
