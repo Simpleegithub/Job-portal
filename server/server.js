@@ -31,7 +31,7 @@ app.get("/debug-sentry", function mainHandler(req, res) {
     throw new Error("My first Sentry error!");
   });
 app.get("/", (req, res)=>{
-    res.send("Server is running");
+    res.send("Server is running")
 })
 
 app.use("/webhooks",clerkWebHooks)
